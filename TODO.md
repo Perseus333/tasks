@@ -3,6 +3,6 @@
 - [x] Create tasks
 - [x] Delete tasks
 - [x] Clear all tasks
-- [ ] Simplify code
+- [x] Simplify code
 - [ ] Use universal paths
 - [ ] add `-h` flag
