@@ -81,6 +81,15 @@ int create_task(const char *task) {
     return list_tasks();
 }
 
+void print_help(const char *prog_name) {
+    printf("Usage: %s [TASK | -d INDEX | clear | -h]\n", prog_name);
+    printf("  No arguments        List tasks\n");
+    printf("  TASK                Add a new task\n");
+    printf("  -d INDEX            Delete task at index\n");
+    printf("  clear               Remove all tasks\n");
+    printf("  -h                  Show this help message\n");
+}
+
 int main(int argc, char **argv) {
     init_paths();
 
@@ -91,6 +100,8 @@ int main(int argc, char **argv) {
     } else if (strcmp(argv[1], "clear") == 0) {
         FILE *db = open_db("w");
         if (db) fclose(db);
+    } else if (strcmp(argv[1], "-h") == 0) {
+        print_help(argv[0]);
     } else {
         return create_task(argv[1]);
     }

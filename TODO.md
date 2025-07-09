@@ -5,4 +5,4 @@
 - [x] Clear all tasks
 - [x] Simplify code
 - [x] Use universal paths
-- [ ] add `-h` flag
+- [x] add `-h` flag
