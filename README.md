@@ -6,9 +6,8 @@
 
 1. Clone this repository
 2. Go to the root directory of the project
-3. run: `make`
-4. add the `/build` folder to your PATH
-5. Refresh the shell
+3. run: `make install`
+5. Open the shell from anywhere
 6. Run `tt`
 
 ## Usage

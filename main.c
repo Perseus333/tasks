@@ -18,8 +18,8 @@ void init_paths() {
         exit(1);
     }
 
-    snprintf(db_dir_path, sizeof(db_dir_path), "%s%s", home, TT_DB_SUBDIR);
-    snprintf(db_path, sizeof(db_path), "%s%s", db_dir_path, TT_DB_FILE);
+    snprintf(db_dir_path, sizeof(home) + sizeof(TT_DB_SUBDIR), "%s%s", home, TT_DB_SUBDIR);
+    snprintf(db_path, sizeof(db_dir_path) + sizeof(TT_DB_FILE) , "%s%s", db_dir_path, TT_DB_FILE);
 }
 
 void ensure_db_dir() {
@@ -70,8 +70,8 @@ int create_task(const char *task) {
     if (!db) return 1;
     fprintf(db, "[ ]|"); // not completed
     char ts[20];
-    sprintf(ts, "%d", time(NULL));
-    fprintf(db, ts);
+    sprintf(ts, "%ld", time(NULL));
+    fprintf(db, "%s", ts);
     fprintf(db, "|");
     fprintf(db, "%s\n", task);
     fclose(db);
