@@ -37,7 +37,7 @@ FILE *open_db(const char *mode) {
 }
 
 void readable_timestamp(const long int unix_time, char* buffer, size_t size) {
-    strftime(buffer, size, "%Y-%m-%dT%H:%M:%S", localtime(&unix_time));
+    strftime(buffer, size, "%Y-%m-%d-%T%H:%M:%S", localtime(&unix_time));
 }
 
 int list_tasks() {
@@ -57,7 +57,7 @@ int list_tasks() {
             token = strtok(NULL, "|");
         }
 
-        printf("%d.\t%s\t%s\n", i, parts[0], parts[2]);
+        printf("%d.\t|%s|\t%s\n", i, parts[1], parts[2]);
     }
 
     free(line);
@@ -70,7 +70,9 @@ int create_task(const char *task) {
     if (!db) return 1;
     fprintf(db, "[ ]|"); // not completed
     char ts[20];
-    sprintf(ts, "%ld", time(NULL));
+  //  sprintf(ts, "%ld", time(NULL));
+    readable_timestamp(time(NULL), ts, sizeof("%Y-%m-%d-%T%H:%M:%S"));
+
     fprintf(db, "%s", ts);
     fprintf(db, "|");
     fprintf(db, "%s\n", task);
@@ -83,6 +85,7 @@ int delete_task(int task_index) {
     if (!db) return 1;
 
     char temp_path[600];
+
     snprintf(temp_path, sizeof(temp_path), "%s.tmp", db_path);
     FILE *temp = fopen(temp_path, "w");
     if (!temp) return 1;
@@ -102,11 +105,13 @@ int delete_task(int task_index) {
     return list_tasks();
 }
 
+
+
 void print_help(const char *prog_name) {
     printf("Usage: %s [TASK | -d INDEX | clear | -h]\n", prog_name);
     printf("  No arguments        List tasks\n");
     printf("  TASK                Add a new task\n");
-    printf("  -d INDEX            Delete task at index\n");
+    printf("  -d INDEX            Delete task at index\n"); 
     printf("  clear               Remove all tasks\n");
     printf("  -h                  Show this help message\n");
 }
@@ -118,7 +123,7 @@ int main(int argc, char **argv) {
         return list_tasks();
     } else if (strcmp(argv[1], "-d") == 0 && argc >= 3) {
         return delete_task(atoi(argv[2]));
-    } else if (strcmp(argv[1], "clear") == 0) {
+    }  else if (strcmp(argv[1], "clear") == 0) {
         FILE *db = open_db("w");
         if (db) fclose(db);
     } else if (strcmp(argv[1], "-h") == 0) {
