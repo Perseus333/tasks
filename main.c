@@ -1,34 +1,48 @@
-// Tasks
-// Manage daily tasks
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
-#define DB_DIR "/home/perseus/.local/share/tt"
-#define DB_PATH "/home/perseus/.local/share/tt/db.txt"
+#define DB_SUBDIR "/.local/share/tt"
+#define DB_FILE "/db.txt"
+
+char db_dir_path[512];
+char db_path[512];
+
+void init_paths() {
+    const char *home = getenv("HOME");
+    if (!home) {
+        fprintf(stderr, "Could not determine home directory.\n");
+        exit(1);
+    }
+
+    snprintf(db_dir_path, sizeof(db_dir_path), "%s%s", home, DB_SUBDIR);
+    snprintf(db_path, sizeof(db_path), "%s%s", db_dir_path, DB_FILE);
+}
 
 void ensure_db_dir() {
     struct stat st;
-    if (stat(DB_DIR, &st) == -1) {
-        system("mkdir -p " DB_DIR);
+    if (stat(db_dir_path, &st) == -1) {
+        char cmd[600];
+        snprintf(cmd, sizeof(cmd), "mkdir -p \"%s\"", db_dir_path);
+        system(cmd);
     }
 }
 
 FILE *open_db(const char *mode) {
     ensure_db_dir();
-    return fopen(DB_PATH, mode);
+    return fopen(db_path, mode);
 }
 
 int list_tasks() {
     FILE *db = open_db("r");
+    if (!db) return 1;
     char *line = NULL;
     size_t len = 0;
 
-    for (int i = 0; getline(&line, &len, db) != -1; i++) {
+    for (int i = 0; getline(&line, &len, db) != -1; i++)
         printf("[%d] %s", i, line);
-    }
 
     free(line);
     fclose(db);
@@ -37,41 +51,49 @@ int list_tasks() {
 
 int delete_task(int task_index) {
     FILE *db = open_db("r");
-    FILE *temp = fopen(DB_PATH ".tmp", "w");
-    
+    if (!db) return 1;
+
+    char temp_path[600];
+    snprintf(temp_path, sizeof(temp_path), "%s.tmp", db_path);
+    FILE *temp = fopen(temp_path, "w");
+    if (!temp) return 1;
+
     char *line = NULL;
     size_t len = 0;
-    for (int i = 0; getline(&line, &len, db) != -1; i++) {
+    for (int i = 0; getline(&line, &len, db) != -1; i++)
         if (i != task_index)
             fputs(line, temp);
-    }
 
     free(line);
     fclose(db);
     fclose(temp);
 
-    remove(DB_PATH);
-    rename(DB_PATH ".tmp", DB_PATH);
+    remove(db_path);
+    rename(temp_path, db_path);
     return list_tasks();
 }
 
 int create_task(const char *task) {
     FILE *db = open_db("a");
+    if (!db) return 1;
     fprintf(db, "%s\n", task);
     fclose(db);
     return list_tasks();
 }
 
 int main(int argc, char **argv) {
+    init_paths();
+
     if (argc == 1) {
         return list_tasks();
-    } 
-    else if (strcmp(argv[1], "-d") == 0 && argc >= 3) {
+    } else if (strcmp(argv[1], "-d") == 0 && argc >= 3) {
         return delete_task(atoi(argv[2]));
     } else if (strcmp(argv[1], "clear") == 0) {
         FILE *db = open_db("w");
-        fclose(db);
+        if (db) fclose(db);
     } else {
         return create_task(argv[1]);
     }
+
+    return 0;
 }
