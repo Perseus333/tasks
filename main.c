@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <time.h>
 
 #define TT_DB_SUBDIR "/.local/share/tt"
 #define TT_DB_FILE "/db.txt"
@@ -35,14 +36,29 @@ FILE *open_db(const char *mode) {
     return fopen(db_path, mode);
 }
 
+void readable_timestamp(const long int unix_time, char* buffer, size_t size) {
+    strftime(buffer, size, "%Y-%m-%dT%H:%M:%S", localtime(&unix_time));
+}
+
 int list_tasks() {
     FILE *db = open_db("r");
     if (!db) return 1;
     char *line = NULL;
     size_t len = 0;
 
-    for (int i = 0; getline(&line, &len, db) != -1; i++)
-        printf("[%d] %s", i, line);
+    for (int i = 0; getline(&line, &len, db) != -1; i++) {
+        line[strcspn(line, "\n")] = 0;
+        char *parts[3] = {0};
+        char *token = strtok(line, "|");    
+        
+        // Change 3 depending on parameters for each line  
+        for (int j = 0; token && j < 3; j++) {
+            parts[j] = token;
+            token = strtok(NULL, "|");
+        }
+
+        printf("%d.\t%s\t%s\n", i, parts[0], parts[2]);
+    }
 
     free(line);
     fclose(db);
@@ -52,6 +68,11 @@ int list_tasks() {
 int create_task(const char *task) {
     FILE *db = open_db("a");
     if (!db) return 1;
+    fprintf(db, "[ ]|"); // not completed
+    char ts[20];
+    sprintf(ts, "%d", time(NULL));
+    fprintf(db, ts);
+    fprintf(db, "|");
     fprintf(db, "%s\n", task);
     fclose(db);
     return list_tasks();
