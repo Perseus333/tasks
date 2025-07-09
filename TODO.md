@@ -6,3 +6,10 @@
 - [x] Simplify code
 - [x] Use universal paths
 - [x] add `-h` flag
+- [ ] Allow multiple argv when creating a task
+- [ ] Add a way to complete tasks
+- [ ] Add support for multiple parameters per task
+- [ ] Add date created
+- [ ] Add date completed
+- [ ] Add a way to display tasks for today
+- [ ] Add priority ???

@@ -4,8 +4,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define DB_SUBDIR "/.local/share/tt"
-#define DB_FILE "/db.txt"
+#define TT_DB_SUBDIR "/.local/share/tt"
+#define TT_DB_FILE "/db.txt"
 
 char db_dir_path[512];
 char db_path[512];
@@ -17,8 +17,8 @@ void init_paths() {
         exit(1);
     }
 
-    snprintf(db_dir_path, sizeof(db_dir_path), "%s%s", home, DB_SUBDIR);
-    snprintf(db_path, sizeof(db_path), "%s%s", db_dir_path, DB_FILE);
+    snprintf(db_dir_path, sizeof(db_dir_path), "%s%s", home, TT_DB_SUBDIR);
+    snprintf(db_path, sizeof(db_path), "%s%s", db_dir_path, TT_DB_FILE);
 }
 
 void ensure_db_dir() {
@@ -49,6 +49,14 @@ int list_tasks() {
     return 0;
 }
 
+int create_task(const char *task) {
+    FILE *db = open_db("a");
+    if (!db) return 1;
+    fprintf(db, "%s\n", task);
+    fclose(db);
+    return list_tasks();
+}
+
 int delete_task(int task_index) {
     FILE *db = open_db("r");
     if (!db) return 1;
@@ -70,14 +78,6 @@ int delete_task(int task_index) {
 
     remove(db_path);
     rename(temp_path, db_path);
-    return list_tasks();
-}
-
-int create_task(const char *task) {
-    FILE *db = open_db("a");
-    if (!db) return 1;
-    fprintf(db, "%s\n", task);
-    fclose(db);
     return list_tasks();
 }
 
@@ -103,7 +103,12 @@ int main(int argc, char **argv) {
     } else if (strcmp(argv[1], "-h") == 0) {
         print_help(argv[0]);
     } else {
-        return create_task(argv[1]);
+        char task_name[50];
+        for (int i = 1; i < argc; i++) {
+            strcat(task_name, argv[i]);
+            strcat(task_name, " ");
+        }
+        return create_task(task_name);
     }
 
     return 0;
