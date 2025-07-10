@@ -1,5 +1,3 @@
-#define _POSIX_C_SOURCE 200809L
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,14 +5,16 @@
 #include <unistd.h>
 #include <time.h>
 #include <limits.h>
+#include <errno.h>
 
 #define TASKS_DB_SUBDIR "/.local/share/tasks"
 #define TASKS_DB_FILE "/db.txt"
 #define TASKS_PARAMETER_COUNT 4
+#define TASKS_NAME_LEN 100
+#define TIMESTAMP_LEN 11 // Currently UNIX (seconds) + \0
 
-char db_dir_path[PATH_MAX];
-char db_path[PATH_MAX];
-const int TIMESTAMP_LEN = 10;
+char *db_dir_path = NULL;
+char *db_path = NULL;
 
 void init_paths() {
     const char *home = getenv("HOME");
@@ -23,16 +23,14 @@ void init_paths() {
         exit(1);
     }
 
-    snprintf(db_dir_path, sizeof(db_dir_path), "%s%s", home, TASKS_DB_SUBDIR);
-    snprintf(db_path, sizeof(db_path), "%s%s", db_dir_path, TASKS_DB_FILE);
+    asprintf(&db_dir_path, "%s%s", home, TASKS_DB_SUBDIR);
+    asprintf(&db_path, "%s%s", db_dir_path, TASKS_DB_FILE);
 }
 
 void ensure_db_dir() {
-    struct stat st;
-    if (stat(db_dir_path, &st) == -1) {
-        char cmd[PATH_MAX];
-        snprintf(cmd, sizeof(cmd), "mkdir -p \"%s\"", db_dir_path);
-        system(cmd);
+    if (mkdir(db_dir_path, 0755) == -1 && errno != EEXIST) {
+        perror("mkdir");
+        exit(1);
     }
 }
 
@@ -43,6 +41,24 @@ FILE *open_db(const char *mode) {
 
 void readable_timestamp(const long int unix_time, char* buffer, size_t size) {
     strftime(buffer, size, "%Y-%m-%d-%T%H:%M:%S", localtime(&unix_time));
+}
+
+char *join_argv(int argc, char **argv, int start_index) {
+    size_t total_len = 1; // for \0
+
+    for (int i = start_index; i < argc; i++) {
+        total_len += strlen(argv[i]) + 1; // len + space
+    }
+
+    char *result = malloc(total_len);
+    result[0] = '\0';
+
+    for (int i = start_index; i < argc; i++) {
+        strcat(result, argv[i]);
+        strcat(result, " ");
+    }
+    
+    return result;
 }
 
 int list_tasks() {
@@ -85,15 +101,15 @@ int create_task(const char *task_name) {
     FILE *db = open_db("a");
     if (!db) return 1;
     char timestamp[TIMESTAMP_LEN];
-    sprintf(timestamp, "%d", time(NULL));
+    sprintf(timestamp, "%ld", time(NULL));
     // Format (based on todo.txt)
     // completed|completed_time|creation_time|name
     fprintf(db, "[ ]|");
-    for (int i = 0; i < TIMESTAMP_LEN; i++) {
+    for (int i = 0; i < TIMESTAMP_LEN-1; i++) {
         fprintf(db, "0");
     }
     fprintf(db, "|");
-    fprintf(db, timestamp);
+    fprintf(db, "%s", timestamp);
     fprintf(db, "|");
     fprintf(db, "%s\n", task_name);
     fclose(db);
@@ -117,11 +133,11 @@ int complete_task(int task_index) {
             line[1] = 'x';
 
             char timestamp[TIMESTAMP_LEN];
-            sprintf(timestamp, "%d", time(NULL));
+            sprintf(timestamp, "%ld", time(NULL));
             const int OFFSET = 4;
 
-            for (int i = 0; i < TIMESTAMP_LEN; i++) {
-                line[i+OFFSET] = timestamp[i];
+            for (int j = 0; j < TIMESTAMP_LEN; j++) {
+                line[j+OFFSET] = timestamp[j];
             }
         }
         fputs(line, temp);
@@ -161,7 +177,10 @@ int delete_task(int task_index) {
     return list_tasks();
 }
 
-
+void cleanup() {
+    free(db_dir_path);
+    free(db_path);
+}
 
 void print_help(const char *prog_name) {
     printf("Usage: %s [TASK | -d INDEX | -c INDEX | clear | -h]\n", prog_name);
@@ -188,13 +207,12 @@ int main(int argc, char **argv) {
     } else if (strcmp(argv[1], "-h") == 0) {
         print_help(argv[0]);
     } else {
-        char task_name[50];
-        for (int i = 1; i < argc; i++) {
-            strcat(task_name, argv[i]);
-            strcat(task_name, " ");
-        }
-        return create_task(task_name);
+        char *task_name = join_argv(argc, argv, 1);
+        int result = create_task(task_name);
+        free(task_name);
+        cleanup();
+        return result;
     }
-
+    cleanup();
     return 0;
 }
