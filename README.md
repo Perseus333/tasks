@@ -6,10 +6,8 @@
 
 1. Clone this repository
 2. Go to the root directory of the project
-3. run: `make`
-4. add the `/build` folder to your PATH
-5. Refresh the shell
-6. Run `tasks`
+3. Run: `make install`
+4. Run: `tasks`
 
 ## Usage
 

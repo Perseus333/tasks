@@ -40,7 +40,7 @@ FILE *open_db(const char *mode) {
 }
 
 void readable_timestamp(const long int unix_time, char* buffer, size_t size) {
-    strftime(buffer, size, "%Y-%m-%dT%H:%M:%S", localtime(&unix_time));
+    strftime(buffer, size, "%Y-%m-%d-%T%H:%M:%S", localtime(&unix_time));
 }
 
 int list_tasks() {
@@ -131,6 +131,7 @@ int delete_task(int task_index) {
     if (!db) return 1;
 
     char temp_path[600];
+
     snprintf(temp_path, sizeof(temp_path), "%s.tmp", db_path);
     FILE *temp = fopen(temp_path, "w");
     if (!temp) return 1;
@@ -149,6 +150,8 @@ int delete_task(int task_index) {
     rename(temp_path, db_path);
     return list_tasks();
 }
+
+
 
 void print_help(const char *prog_name) {
     printf("Usage: %s [TASK | -d INDEX | -c INDEX | clear | -h]\n", prog_name);
