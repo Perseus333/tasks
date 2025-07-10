@@ -1,4 +1,4 @@
-# TT - Tiny Tasks
+# Tasks
 
 **Simple terminal task manager**
 
@@ -6,14 +6,15 @@
 
 1. Clone this repository
 2. Go to the root directory of the project
-3. run: `make install`
-5. Open the shell from anywhere
-6. Run `tt`
+3. Run: `make install`
+4. Run: `tasks`
 
 ## Usage
 
-1. Listing tasks: `tt`
-2. Creating tasks: `tt "TASK_NAME"`
-3. Delete tasks: `tt -d TASK_INDEX` (see index from `tt` output)
-4. Clear all tasks: `tt clear`
+1. Listing tasks: `tasks`
+2. Creating tasks: `tasks "TASK_NAME"`
+3. Complete task: `tasks -c TASK_INDEX`
+4. Delete tasks: `tasks -d TASK_INDEX` (see index from `tasks` output)
+5. Clear all tasks: `tasks clear`
+6. Help (shows this): `tasks -h`
 
