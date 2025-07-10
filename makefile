@@ -1,13 +1,13 @@
-all: tt
+all: tasks
 
-tt: 	main.c
+tasks: 	main.c
 	mkdir -p build
-	gcc main.c -o build/tt
-	chmod +x ./build/tt
+	gcc main.c -o build/tasks
+	chmod +x ./build/tasks
 
-install: tt
+install: tasks
 
-	sudo cp ./build/tt /usr/local/bin
+	sudo cp ./build/tasks /usr/local/bin
 
 clean:
 	rm -r ./build
