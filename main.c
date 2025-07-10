@@ -7,9 +7,11 @@
 
 #define TT_DB_SUBDIR "/.local/share/tt"
 #define TT_DB_FILE "/db.txt"
+#define PARAMETER_COUNT 4
 
 char db_dir_path[512];
 char db_path[512];
+const int TIMESTAMP_LEN = 10;
 
 void init_paths() {
     const char *home = getenv("HOME");
@@ -49,17 +51,16 @@ int list_tasks() {
 
     for (int i = 0; getline(&line, &len, db) != -1; i++) {
         line[strcspn(line, "\n")] = 0;
-        char *parts[3] = {0};
+        char *parts[PARAMETER_COUNT] = {0};
         char *token = strtok(line, "|");    
         
-        // Change 3 depending on parameters for each line  
-        for (int j = 0; token && j < 3; j++) {
+        for (int j = 0; token && j < PARAMETER_COUNT; j++) {
             parts[j] = token;
             token = strtok(NULL, "|");
         }
         // If not complete
         if (strcmp(parts[0], "[x]") != 0) {
-            printf("%d.\t%s\n", index, parts[2]);
+            printf("%d.\t%s\n", index, parts[3]);
             index++;
         } 
     }
@@ -69,15 +70,21 @@ int list_tasks() {
     return 0;
 }
 
-int create_task(const char *task) {
+int create_task(const char *task_name) {
     FILE *db = open_db("a");
     if (!db) return 1;
-    fprintf(db, "[ ]|"); // not completed
-    char ts[20];
-    sprintf(ts, "%d", time(NULL));
-    fprintf(db, ts);
+    char timestamp[TIMESTAMP_LEN];
+    sprintf(timestamp, "%d", time(NULL));
+    // Format (based on todo.txt)
+    // completed|completed_time|creation_time|name
+    fprintf(db, "[ ]|");
+    for (int i = 0; i < TIMESTAMP_LEN; i++) {
+        fprintf(db, "0");
+    }
     fprintf(db, "|");
-    fprintf(db, "%s\n", task);
+    fprintf(db, timestamp);
+    fprintf(db, "|");
+    fprintf(db, "%s\n", task_name);
     fclose(db);
     return list_tasks();
 }
@@ -93,9 +100,18 @@ int complete_task(int task_index) {
 
     char *line = NULL;
     size_t len = 0;
+
     for (int i = 0; getline(&line, &len, db) != -1; i++) {
         if (i == task_index) {
             line[1] = 'x';
+
+            char timestamp[TIMESTAMP_LEN];
+            sprintf(timestamp, "%d", time(NULL));
+            const int OFFSET = 4;
+
+            for (int i = 0; i < TIMESTAMP_LEN; i++) {
+                line[i+OFFSET] = timestamp[i];
+            }
         }
         fputs(line, temp);
     }

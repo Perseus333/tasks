@@ -11,6 +11,7 @@
 - [x] Add a way to complete tasks
 - [x] Add date created
 - [ ] Add date completed
+- [ ] Change to a unique name
 - [ ] Add due date
 - [ ] Add a way to display tasks for today
 - [ ] Add priority ???
