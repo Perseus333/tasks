@@ -8,8 +8,9 @@
 - [x] add `-h` flag
 - [x] Allow multiple argv when creating a task
 - [x] Add support for multiple parameters per task
-- [ ] Add a way to complete tasks
-- [ ] Add date created
+- [x] Add a way to complete tasks
+- [x] Add date created
 - [ ] Add date completed
+- [ ] Add due date
 - [ ] Add a way to display tasks for today
 - [ ] Add priority ???

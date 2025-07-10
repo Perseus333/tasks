@@ -45,6 +45,7 @@ int list_tasks() {
     if (!db) return 1;
     char *line = NULL;
     size_t len = 0;
+    int index = 0;
 
     for (int i = 0; getline(&line, &len, db) != -1; i++) {
         line[strcspn(line, "\n")] = 0;
@@ -56,8 +57,11 @@ int list_tasks() {
             parts[j] = token;
             token = strtok(NULL, "|");
         }
-
-        printf("%d.\t%s\t%s\n", i, parts[0], parts[2]);
+        // If not complete
+        if (strcmp(parts[0], "[x]") != 0) {
+            printf("%d.\t%s\n", index, parts[2]);
+            index++;
+        } 
     }
 
     free(line);
@@ -75,6 +79,33 @@ int create_task(const char *task) {
     fprintf(db, "|");
     fprintf(db, "%s\n", task);
     fclose(db);
+    return list_tasks();
+}
+
+int complete_task(int task_index) {
+    FILE *db = open_db("r");
+    if (!db) return 1;
+
+    char temp_path[600];
+    snprintf(temp_path, sizeof(temp_path), "%s.tmp", db_path);
+    FILE *temp = fopen(temp_path, "w");
+    if (!temp) return 1;
+
+    char *line = NULL;
+    size_t len = 0;
+    for (int i = 0; getline(&line, &len, db) != -1; i++) {
+        if (i == task_index) {
+            line[1] = 'x';
+        }
+        fputs(line, temp);
+    }
+
+    free(line);
+    fclose(db);
+    fclose(temp);
+
+    remove(db_path);
+    rename(temp_path, db_path);
     return list_tasks();
 }
 
@@ -103,9 +134,10 @@ int delete_task(int task_index) {
 }
 
 void print_help(const char *prog_name) {
-    printf("Usage: %s [TASK | -d INDEX | clear | -h]\n", prog_name);
+    printf("Usage: %s [TASK | -d INDEX | -c INDEX | clear | -h]\n", prog_name);
     printf("  No arguments        List tasks\n");
     printf("  TASK                Add a new task\n");
+    printf("  -c INDEX            Complete task at index\n");
     printf("  -d INDEX            Delete task at index\n");
     printf("  clear               Remove all tasks\n");
     printf("  -h                  Show this help message\n");
@@ -116,6 +148,8 @@ int main(int argc, char **argv) {
 
     if (argc == 1) {
         return list_tasks();
+    } else if (strcmp(argv[1], "-c") == 0 && argc >= 3) {
+        return complete_task(atoi(argv[2]));
     } else if (strcmp(argv[1], "-d") == 0 && argc >= 3) {
         return delete_task(atoi(argv[2]));
     } else if (strcmp(argv[1], "clear") == 0) {
