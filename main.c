@@ -11,7 +11,7 @@
 #define TASKS_DB_FILE "/db.txt"
 #define TASKS_PARAMETER_COUNT 4
 #define TASKS_NAME_LEN 100
-#define TIMESTAMP_LEN 11 // Currently UNIX (seconds) + \0
+#define TIMESTAMP_LEN 10 // Currently UNIX (seconds) + \0
 
 char *db_dir_path = NULL;
 char *db_path = NULL;
@@ -36,7 +36,17 @@ void ensure_db_dir() {
 
 FILE *open_db(const char *mode) {
     ensure_db_dir();
-    return fopen(db_path, mode);
+    FILE* db = fopen(db_path, mode);
+    if (!db) {
+        db = fopen(db_path, "a");
+        if (!db) {
+            fprintf(stderr, "Could not open nor create tasks database.\n");
+            exit(1);
+        }
+        fclose(db);
+        db = fopen(db_path, mode);
+    }
+    return db;
 }
 
 void readable_timestamp(const long int unix_time, char* buffer, size_t size) {
@@ -63,15 +73,6 @@ char *join_argv(int argc, char **argv, int start_index) {
 
 int list_tasks() {
     FILE *db = open_db("r");
-    if (!db) {
-        db = open_db("a");
-        if (!db) {
-            fprintf(stderr, "Could not open tasks database.\n");
-            return 1;
-        }
-        fclose(db);
-        return 0;
-    }
     char *line = NULL;
     size_t len = 0;
     int index = 0;
@@ -99,13 +100,12 @@ int list_tasks() {
 
 int create_task(const char *task_name) {
     FILE *db = open_db("a");
-    if (!db) return 1;
-    char timestamp[TIMESTAMP_LEN];
+    char timestamp[TIMESTAMP_LEN+1]; // +1 for \0
     sprintf(timestamp, "%ld", time(NULL));
     // Format (based on todo.txt)
     // completed|completed_time|creation_time|name
     fprintf(db, "[ ]|");
-    for (int i = 0; i < TIMESTAMP_LEN-1; i++) {
+    for (int i = 0; i < TIMESTAMP_LEN; i++) {
         fprintf(db, "0");
     }
     fprintf(db, "|");
@@ -118,29 +118,37 @@ int create_task(const char *task_name) {
 
 int complete_task(int task_index) {
     FILE *db = open_db("r");
-    if (!db) return 1;
 
-    char temp_path[_PC_PATH_MAX];
+    char temp_path[100];
     snprintf(temp_path, sizeof(temp_path), "%s.tmp", db_path);
     FILE *temp = fopen(temp_path, "w");
     if (!temp) return 1;
 
     char *line = NULL;
     size_t len = 0;
+    int current_index = 0;
 
     for (int i = 0; getline(&line, &len, db) != -1; i++) {
-        if (i == task_index) {
-            line[1] = 'x';
+        line[strcspn(line, "\n")] = '\0';
 
-            char timestamp[TIMESTAMP_LEN];
-            sprintf(timestamp, "%ld", time(NULL));
-            const int OFFSET = 4;
+        char *parts[TASKS_PARAMETER_COUNT] = {0};
+        char *token = strtok(line, "|");
 
-            for (int j = 0; j < TIMESTAMP_LEN; j++) {
-                line[j+OFFSET] = timestamp[j];
-            }
+        for (int j = 0; token && j < TASKS_PARAMETER_COUNT; j++) {
+            parts[j] = token;
+            token = strtok(NULL, "|");
         }
-        fputs(line, temp);
+
+        if (current_index == task_index) {
+            char timestamp[TIMESTAMP_LEN+1]; // +1 for \0
+            snprintf(timestamp, sizeof(timestamp), "%ld", time(NULL));
+            fprintf(temp, "[x]|%s|%s|%s\n", timestamp, parts[2], parts[3]);
+        } else {
+            // Could be expanded to include a toggle
+            fprintf(temp, "%s|%s|%s|%s\n", parts[0], parts[1], parts[2], parts[3]);
+        }
+
+        current_index++;
     }
 
     free(line);
@@ -154,7 +162,6 @@ int complete_task(int task_index) {
 
 int delete_task(int task_index) {
     FILE *db = open_db("r");
-    if (!db) return 1;
 
     char temp_path[600];
 
