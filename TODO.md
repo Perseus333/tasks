@@ -12,7 +12,7 @@
 - [x] Add date created
 - [x] Add date completed
 - [x] Change to a unique name
-- [ ] Add a way to display tasks for today
 - [ ] Add priority
 - [ ] Add sorting
 - [ ] Add due date
+- [ ] Add a way to display tasks for today

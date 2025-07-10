@@ -147,8 +147,9 @@ int complete_task(int task_index) {
             // Could be expanded to include a toggle
             fprintf(temp, "%s|%s|%s|%s\n", parts[0], parts[1], parts[2], parts[3]);
         }
-
-        current_index++;
+        if (strcmp(parts[0], "[x]") != 0) {
+            current_index++;
+        }
     }
 
     free(line);
