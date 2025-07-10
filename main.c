@@ -4,10 +4,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <time.h>
+#include <limits.h>
 
 #define TT_DB_SUBDIR "/.local/share/tt"
 #define TT_DB_FILE "/db.txt"
-#define PARAMETER_COUNT 4
+#define TT_PARAMETER_COUNT 4
 
 char db_dir_path[512];
 char db_path[512];
@@ -27,7 +28,7 @@ void init_paths() {
 void ensure_db_dir() {
     struct stat st;
     if (stat(db_dir_path, &st) == -1) {
-        char cmd[600];
+        char cmd[_PC_PATH_MAX];
         snprintf(cmd, sizeof(cmd), "mkdir -p \"%s\"", db_dir_path);
         system(cmd);
     }
@@ -51,10 +52,10 @@ int list_tasks() {
 
     for (int i = 0; getline(&line, &len, db) != -1; i++) {
         line[strcspn(line, "\n")] = 0;
-        char *parts[PARAMETER_COUNT] = {0};
+        char *parts[TT_PARAMETER_COUNT] = {0};
         char *token = strtok(line, "|");    
         
-        for (int j = 0; token && j < PARAMETER_COUNT; j++) {
+        for (int j = 0; token && j < TT_PARAMETER_COUNT; j++) {
             parts[j] = token;
             token = strtok(NULL, "|");
         }
@@ -93,7 +94,7 @@ int complete_task(int task_index) {
     FILE *db = open_db("r");
     if (!db) return 1;
 
-    char temp_path[600];
+    char temp_path[_PC_PATH_MAX];
     snprintf(temp_path, sizeof(temp_path), "%s.tmp", db_path);
     FILE *temp = fopen(temp_path, "w");
     if (!temp) return 1;
@@ -155,7 +156,7 @@ void print_help(const char *prog_name) {
     printf("  TASK                Add a new task\n");
     printf("  -c INDEX            Complete task at index\n");
     printf("  -d INDEX            Delete task at index\n");
-    printf("  clear               Remove all tasks\n");
+    printf("  clearall            Remove all tasks\n");
     printf("  -h                  Show this help message\n");
 }
 
@@ -168,7 +169,7 @@ int main(int argc, char **argv) {
         return complete_task(atoi(argv[2]));
     } else if (strcmp(argv[1], "-d") == 0 && argc >= 3) {
         return delete_task(atoi(argv[2]));
-    } else if (strcmp(argv[1], "clear") == 0) {
+    } else if (strcmp(argv[1], "clearall") == 0) {
         FILE *db = open_db("w");
         if (db) fclose(db);
     } else if (strcmp(argv[1], "-h") == 0) {
