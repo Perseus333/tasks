@@ -6,9 +6,9 @@
 #include <time.h>
 #include <limits.h>
 
-#define TT_DB_SUBDIR "/.local/share/tt"
-#define TT_DB_FILE "/db.txt"
-#define TT_PARAMETER_COUNT 4
+#define TASKS_DB_SUBDIR "/.local/share/tasks"
+#define TASKS_DB_FILE "/db.txt"
+#define TASKS_PARAMETER_COUNT 4
 
 char db_dir_path[512];
 char db_path[512];
@@ -21,8 +21,8 @@ void init_paths() {
         exit(1);
     }
 
-    snprintf(db_dir_path, sizeof(db_dir_path), "%s%s", home, TT_DB_SUBDIR);
-    snprintf(db_path, sizeof(db_path), "%s%s", db_dir_path, TT_DB_FILE);
+    snprintf(db_dir_path, sizeof(db_dir_path), "%s%s", home, TASKS_DB_SUBDIR);
+    snprintf(db_path, sizeof(db_path), "%s%s", db_dir_path, TASKS_DB_FILE);
 }
 
 void ensure_db_dir() {
@@ -52,10 +52,10 @@ int list_tasks() {
 
     for (int i = 0; getline(&line, &len, db) != -1; i++) {
         line[strcspn(line, "\n")] = 0;
-        char *parts[TT_PARAMETER_COUNT] = {0};
+        char *parts[TASKS_PARAMETER_COUNT] = {0};
         char *token = strtok(line, "|");    
         
-        for (int j = 0; token && j < TT_PARAMETER_COUNT; j++) {
+        for (int j = 0; token && j < TASKS_PARAMETER_COUNT; j++) {
             parts[j] = token;
             token = strtok(NULL, "|");
         }
