@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,8 +12,8 @@
 #define TASKS_DB_FILE "/db.txt"
 #define TASKS_PARAMETER_COUNT 4
 
-char db_dir_path[512];
-char db_path[512];
+char db_dir_path[PATH_MAX];
+char db_path[PATH_MAX];
 const int TIMESTAMP_LEN = 10;
 
 void init_paths() {
@@ -28,7 +30,7 @@ void init_paths() {
 void ensure_db_dir() {
     struct stat st;
     if (stat(db_dir_path, &st) == -1) {
-        char cmd[_PC_PATH_MAX];
+        char cmd[PATH_MAX];
         snprintf(cmd, sizeof(cmd), "mkdir -p \"%s\"", db_dir_path);
         system(cmd);
     }
@@ -45,7 +47,15 @@ void readable_timestamp(const long int unix_time, char* buffer, size_t size) {
 
 int list_tasks() {
     FILE *db = open_db("r");
-    if (!db) return 1;
+    if (!db) {
+        db = open_db("a");
+        if (!db) {
+            fprintf(stderr, "Could not open tasks database.\n");
+            return 1;
+        }
+        fclose(db);
+        return 0;
+    }
     char *line = NULL;
     size_t len = 0;
     int index = 0;
