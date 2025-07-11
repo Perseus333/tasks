@@ -9,9 +9,9 @@
 
 #define TASKS_DB_SUBDIR "/.local/share/tasks"
 #define TASKS_DB_FILE "/db.txt"
+#define TASKS_TEMP_EXTENSION ".tmp"
 #define TASKS_PARAMETER_COUNT 4
-#define TASKS_NAME_LEN 100
-#define TIMESTAMP_LEN 10 // Currently UNIX (seconds) + \0
+#define TIMESTAMP_LEN 10 // Currently UNIX (seconds)
 
 char *db_dir_path = NULL;
 char *db_path = NULL;
@@ -49,9 +49,11 @@ FILE *open_db(const char *mode) {
     return db;
 }
 
+/* Unused for now
 void readable_timestamp(const long int unix_time, char* buffer, size_t size) {
     strftime(buffer, size, "%Y-%m-%d-%T%H:%M:%S", localtime(&unix_time));
 }
+*/
 
 char *join_argv(int argc, char **argv, int start_index) {
     size_t total_len = 1; // for \0
@@ -163,8 +165,8 @@ int complete_task() {
     }
     
     FILE *db = open_db("r");
-    char temp_path[100];
-    snprintf(temp_path, sizeof(temp_path), "%s.tmp", db_path);
+    char temp_path[strlen(db_path)+strlen(TASKS_TEMP_EXTENSION)];
+    snprintf(temp_path, sizeof(temp_path), "%s%s", db_path, TASKS_TEMP_EXTENSION);
     FILE *temp = fopen(temp_path, "w");
     if (!temp) return 1;
 
@@ -213,7 +215,7 @@ int delete_task() {
     }
 
     FILE *db = open_db("r");
-    char temp_path[600];
+    char temp_path[strlen(db_path)+strlen(TASKS_TEMP_EXTENSION)];
 
     snprintf(temp_path, sizeof(temp_path), "%s.tmp", db_path);
     FILE *temp = fopen(temp_path, "w");
@@ -227,7 +229,6 @@ int delete_task() {
             fputs(line, temp);
         task_count++;
     }
-    
     
     free(line);
     fclose(db);
@@ -273,12 +274,9 @@ int main(int argc, char **argv) {
     } else if (strcmp(argv[1], "-h") == 0) {
         print_help(argv[0]);
     } else {
-        char *task_name = join_argv(argc, argv, 1);
-        int result = create_task(task_name);
-        free(task_name);
-        cleanup();
-        return result;
+        create_task(join_argv(argc, argv, 1));
     }
+
     cleanup();
     return 0;
 }

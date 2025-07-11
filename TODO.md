@@ -13,6 +13,8 @@
 - [x] Add date completed
 - [x] Change to a unique name
 - [ ] Rm magic numbers
+- [ ] Add Task *parse_tasks()
+- [ ] Add unix like aliases (rm, ls, etc.)
 - [ ] Add priority
 - [ ] Add sorting
 - [ ] Add due date

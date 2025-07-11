@@ -12,9 +12,9 @@
 ## Usage
 
 1. Listing tasks: `tasks`
-2. Creating tasks: `tasks "TASK_NAME"`
-3. Complete task: `tasks -c TASK_INDEX`
-4. Delete tasks: `tasks -d TASK_INDEX` (see index from `tasks` output)
+2. Creating tasks: `tasks TASK_NAME`
+3. Complete task: `tasks complete`
+4. Delete tasks: `tasks delete` (see index from `tasks` output)
 5. Clear all tasks: `tasks clear`
 6. Help (shows this): `tasks -h`
 
