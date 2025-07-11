@@ -71,7 +71,45 @@ char *join_argv(int argc, char **argv, int start_index) {
     return result;
 }
 
-int list_tasks() {
+int count_tasks() {
+    FILE *db = open_db("r");
+    char *line = NULL;
+    size_t len = 0;
+    int task_count = 0;
+
+    for (int i = 0; getline(&line, &len, db) != -1; i++) {
+        task_count++;
+    }
+
+    return task_count;
+}
+
+int read_index() {
+    int task_index;
+    char buffer[5];
+    printf("Enter the task index: ");
+    
+    if (fgets(buffer, 5, stdin) == NULL) {
+        perror("Input too long");
+        return -1;
+    }
+    
+    char *endptr;
+    task_index = strtol(buffer, &endptr, 10);
+
+    if ((errno == ERANGE) || (endptr == buffer) || (*endptr && *endptr != '\n')) {
+        perror("Enter a valid interger");
+        return -1;
+    }
+
+    if ((0 > task_index) || (task_index > count_tasks())) {
+        perror("Index does not correspond to any task");
+        return -1;
+    }
+    return task_index;
+}
+
+int list_tasks(int only_complete) {
     FILE *db = open_db("r");
     char *line = NULL;
     size_t len = 0;
@@ -86,11 +124,11 @@ int list_tasks() {
             parts[j] = token;
             token = strtok(NULL, "|");
         }
-        // If not complete
-        if (strcmp(parts[0], "[x]") != 0) {
-            printf("%d.\t%s\n", index, parts[3]);
+
+        if (strcmp(parts[0], "[x]") || (only_complete == 0)) {
+            printf("%d.\t%s\t%s\n", index, parts[0], parts[3]);
             index++;
-        } 
+        }
     }
 
     free(line);
@@ -113,12 +151,18 @@ int create_task(const char *task_name) {
     fprintf(db, "|");
     fprintf(db, "%s\n", task_name);
     fclose(db);
-    return list_tasks();
+    return list_tasks(1);
 }
 
-int complete_task(int task_index) {
-    FILE *db = open_db("r");
+int complete_task() {
 
+    list_tasks(1);
+    int task_index = read_index();
+    if (task_index == -1) {
+        return 1;
+    }
+    
+    FILE *db = open_db("r");
     char temp_path[100];
     snprintf(temp_path, sizeof(temp_path), "%s.tmp", db_path);
     FILE *temp = fopen(temp_path, "w");
@@ -158,12 +202,17 @@ int complete_task(int task_index) {
 
     remove(db_path);
     rename(temp_path, db_path);
-    return list_tasks();
+    return list_tasks(1);
 }
 
-int delete_task(int task_index) {
-    FILE *db = open_db("r");
+int delete_task() {
+    list_tasks(0);
+    int task_index = read_index();
+    if (task_index == -1) {
+        return 1;
+    }
 
+    FILE *db = open_db("r");
     char temp_path[600];
 
     snprintf(temp_path, sizeof(temp_path), "%s.tmp", db_path);
@@ -172,17 +221,26 @@ int delete_task(int task_index) {
 
     char *line = NULL;
     size_t len = 0;
-    for (int i = 0; getline(&line, &len, db) != -1; i++)
+    int task_count = 0;
+    for (int i = 0; getline(&line, &len, db) != -1; i++) {
         if (i != task_index)
             fputs(line, temp);
-
+        task_count++;
+    }
+    
+    
     free(line);
     fclose(db);
     fclose(temp);
 
+    if (task_index > task_count) {
+        perror("Index provided was larger than task amount\n");
+        return 1;
+    }
+    
     remove(db_path);
     rename(temp_path, db_path);
-    return list_tasks();
+    return list_tasks(0);
 }
 
 void cleanup() {
@@ -191,11 +249,11 @@ void cleanup() {
 }
 
 void print_help(const char *prog_name) {
-    printf("Usage: %s [TASK | -d INDEX | -c INDEX | clear | -h]\n", prog_name);
+    printf("Usage: %s [TASK | delete | complete | clear | -h]\n", prog_name);
     printf("  No arguments        List tasks\n");
     printf("  TASK                Add a new task\n");
-    printf("  -c INDEX            Complete task at index\n");
-    printf("  -d INDEX            Delete task at index\n");
+    printf("  complete            Complete a task\n");
+    printf("  delete              Delete a task\n");
     printf("  clearall            Remove all tasks\n");
     printf("  -h                  Show this help message\n");
 }
@@ -204,11 +262,11 @@ int main(int argc, char **argv) {
     init_paths();
 
     if (argc == 1) {
-        return list_tasks();
-    } else if (strcmp(argv[1], "-c") == 0 && argc >= 3) {
-        return complete_task(atoi(argv[2]));
-    } else if (strcmp(argv[1], "-d") == 0 && argc >= 3) {
-        return delete_task(atoi(argv[2]));
+        return list_tasks(1);
+    } else if (strcmp(argv[1], "complete") == 0) {
+        return complete_task();
+    } else if (strcmp(argv[1], "delete") == 0) {
+        return delete_task();
     } else if (strcmp(argv[1], "clearall") == 0) {
         FILE *db = open_db("w");
         if (db) fclose(db);
