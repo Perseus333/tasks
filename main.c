@@ -13,7 +13,7 @@
 #define TASKS_PARAMETER_COUNT 4
 #define TASKS_BUFFER_LEN 5
 #define TASKS_TIMESTAMP_LEN 10 // Currently UNIX (seconds)
-#define TASKS_EXCLUDE_COMPLETE 1
+#define TASKS_ONLY_PENDING 1
 #define TASKS_INCLUDE_ALL 0
 
 struct Task {
@@ -21,12 +21,14 @@ struct Task {
     int completed_time;
     int created_time;
     char *name;
+    int file_line;
 };
 
 char *db_dir_path = NULL;
 char *db_path = NULL;
 
 struct Task *tasks;
+int line_count;
 int task_count;
 
 void init_paths() {
@@ -68,17 +70,17 @@ void readable_timestamp(const long int unix_time, char* buffer, size_t size) {
 }
 */
 
-int count_tasks() {
+int count_lines() {
     FILE *db = open_db("r");
     char *line = NULL;
     size_t len = 0;
-    int task_count = 0;
+    int line_count = 0;
 
     for (int i = 0; getline(&line, &len, db) != -1; i++) {
-        task_count++;
+        line_count++;
     }
 
-    return task_count;
+    return line_count;
 }
 
 char *join_argv(int argc, char **argv, int start_index) {
@@ -117,52 +119,75 @@ int read_index() {
         return -1;
     }
 
-    if ((0 > task_index) || (task_index >= count_tasks())) {
+    if ((0 > task_index) || (task_index >= count_lines())) {
         perror("Index does not correspond to any task");
         return -1;
     }
     return task_index;
 }
 
-void parse_tasks(int task_count) {
+void parse_tasks(int line_count) {
     FILE *db = open_db("r");
     char *line = NULL;
     size_t len = 0;
-
+    int index = 0;
+    
     for (int i = 0; getline(&line, &len, db) != -1; i++) {
-        line[strcspn(line, "\n")] = 0;
-        char *token = strtok(line, "|");
-        char *parts[TASKS_PARAMETER_COUNT] = {0};
+        if (line != NULL) {
+            line[strcspn(line, "\n")] = 0;
+            char *token = strtok(line, "|");
+            char *parts[TASKS_PARAMETER_COUNT] = {0};
 
-        for (int j = 0; token && j < TASKS_PARAMETER_COUNT; j++) {
-            parts[j] = token;
-            token = strtok(NULL, "|");
-        }
-        
-        if (strcmp(parts[0], "[x]") == 0) {
-            tasks[i].is_complete = 1;
-        } else if (strcmp(parts[0], "[ ]") == 0) {
-            tasks[i].is_complete = 0;
-        } else {
-            perror("Malformed DB, could not read completeness\n");
-            exit(1);
-        }
+            for (int j = 0; token && j < TASKS_PARAMETER_COUNT; j++) {
+                parts[j] = token;
+                token = strtok(NULL, "|");
+            }
+            int errors = 0;
 
-        char* endptr;
-        tasks[i].completed_time = strtol(parts[1], &endptr, 10);
-        tasks[i].created_time = strtol(parts[2], &endptr, 10);
-        tasks[i].name = strdup(parts[3]);
+            if (strcmp(parts[0], "[x]") == 0) {
+                tasks[index].is_complete = 1;
+            } else if (strcmp(parts[0], "[ ]") == 0) {
+                tasks[index].is_complete = 0;
+            } else {
+                printf("Could not read completeness of task at line %d\n", i);
+                errors++;
+            }
+
+            char* endptr;
+            errno = 0;
+
+            int completed_time = strtol(parts[1], &endptr, 10);
+            if ((errno == ERANGE) || (endptr == parts[1]) || (*endptr && *endptr != '\n')) {
+                printf("Completed time is not a valid UNIX timestamp at line %d\n", i);
+                errors++;
+            }
+            int created_time = strtol(parts[2], &endptr, 10);
+            if ((errno == ERANGE) || (endptr == parts[2]) || (*endptr && *endptr != '\n')) {
+                printf("Created time is not a valid UNIX timestamp at line %d\n", i);
+                errors++;
+            }
+            
+            if (errors > 0) {
+                continue;
+            }
+
+            tasks[index].completed_time = completed_time;
+            tasks[index].created_time = created_time;
+            tasks[index].name = strdup(parts[3]);
+            tasks[index].file_line = i;
+            index++;
+        }
     }
-
+    task_count = index;
     free(line);
     fclose(db);
 }
 
-int list_tasks(int exclude_complete) {
+int list_tasks(int only_pending) {
     int index = 0;
     for (int i = 0; i < task_count; i++) {
         struct Task task = tasks[i];
-        if ((tasks[i].is_complete == 0) || (exclude_complete == 0)) {
+        if (only_pending == 0) {
             char *complete_format;
             if (task.is_complete) {
                 complete_format = "[x]";
@@ -172,6 +197,12 @@ int list_tasks(int exclude_complete) {
             }
             printf("%d.\t%s\t%s\n", index, complete_format, task.name);
             index++;
+        }
+        else {
+            if (task.is_complete == 0) {
+                printf("%d.\t%s\n", index, task.name);
+                index++;
+            }
         }
     }
     return 0;
@@ -196,7 +227,7 @@ int create_task(const char *task_name) {
 }
 
 int complete_task() {
-    list_tasks(TASKS_EXCLUDE_COMPLETE);
+    list_tasks(TASKS_ONLY_PENDING);
     int task_index = read_index();
     if (task_index == -1) {
         return 1;
@@ -251,6 +282,7 @@ int delete_task() {
     if (task_index == -1) {
         return 1;
     }
+    int line_to_delete = tasks[task_index].file_line;
 
     FILE *db = open_db("r");
     char temp_path[strlen(db_path)+strlen(TASKS_TEMP_EXTENSION)];
@@ -261,21 +293,21 @@ int delete_task() {
 
     char *line = NULL;
     size_t len = 0;
-    int current_index = 0;
+    int current_line = 0;
 
     while (getline(&line, &len, db) != -1) {
         // Only skip the selected task index
-        if (current_index != task_index) {
+        if (current_line != line_to_delete) {
             fputs(line, temp);
         }
-        current_index++;
+        current_line++;
     }
 
     free(line);
     fclose(db);
     fclose(temp);
 
-    if (task_index > task_count) {
+    if (task_index > line_count) {
         perror("Index provided was larger than task amount\n");
         return 1;
     }
@@ -287,7 +319,8 @@ int delete_task() {
 
 void print_help(const char *prog_name) {
     printf("Usage: %s [TASK | delete | complete | clear | -h]\n", prog_name);
-    printf("  No arguments        List tasks\n");
+    printf("  No arguments        List pending tasks\n");
+    printf("  list                Lists all tasks\n");
     printf("  TASK                Add a new task\n");
     printf("  complete            Complete a task\n");
     printf("  delete              Delete a task\n");
@@ -298,16 +331,18 @@ void print_help(const char *prog_name) {
 int main(int argc, char **argv) {
     init_paths();
     ensure_db_dir();
-    task_count = count_tasks();
-    tasks = (struct Task *)malloc(sizeof(struct Task) * task_count);
+    line_count = count_lines();
+    tasks = (struct Task *)malloc(sizeof(struct Task) * line_count);
     if (tasks == NULL) {
         perror("malloc");
         return 1;
     }
-    parse_tasks(task_count);
+    parse_tasks(line_count);
 
     if (argc == 1) {
-        return list_tasks(TASKS_EXCLUDE_COMPLETE);
+        return list_tasks(TASKS_ONLY_PENDING);
+    } else if (strcmp(argv[1], "list") == 0) {
+        return list_tasks(TASKS_INCLUDE_ALL);
     } else if (strcmp(argv[1], "complete") == 0) {
         return complete_task();
     } else if (strcmp(argv[1], "delete") == 0) {

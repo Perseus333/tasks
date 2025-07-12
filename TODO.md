@@ -14,8 +14,9 @@
 - [x] Change to a unique name
 - [x] Rm magic numbers
 - [x] Add Task parse_tasks()
-- [ ] Add unix like aliases (rm, ls, etc.)
-- [ ] Add priority
+- [ ] Add psilib for helpfer functions
 - [ ] Add sorting
 - [ ] Add due date
 - [ ] Add a way to display tasks for today
+- [ ] Add unix like aliases (rm, ls, etc.)
+- [ ] Add priority
