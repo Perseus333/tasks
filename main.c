@@ -11,15 +11,18 @@
 #define TASKS_DB_FILE "/db.txt"
 #define TASKS_TEMP_EXTENSION ".tmp"
 #define TASKS_BACKUP_EXTENSION ".bak"
-#define TASKS_PARAMETER_COUNT 4
 #define TASKS_BUFFER_LEN 5
 #define TASKS_TIMESTAMP_LEN 10 // Currently UNIX (seconds)
 #define TASKS_ONLY_PENDING 1
 #define TASKS_INCLUDE_ALL 0
-#define TASKS_IS_COMPLETE_INDEX 0
-#define TASKS_COMPLETED_INDEX 1
-#define TASKS_CREATED_INDEX 2
-#define TASKS_NAME_INDEX 3
+
+enum {
+    TASKS_IS_COMPLETE_INDEX = 0,
+    TASKS_COMPLETED_INDEX,
+    TASKS_CREATED_INDEX,
+    TASKS_NAME_INDEX,
+    TASKS_PARAMETER_COUNT
+};
 
 struct Task {
     int is_complete;
@@ -91,10 +94,10 @@ int count_lines() {
 }
 
 char *join_argv(int argc, char **argv, int start_index) {
-    size_t total_len = 1; // for \0
+    size_t total_len = 0;
 
     for (int i = start_index; i < argc; i++) {
-        total_len += strlen(argv[i]) + 1; // len + space
+        total_len += strlen(argv[i]);
     }
 
     char *result = malloc(total_len);
@@ -102,37 +105,53 @@ char *join_argv(int argc, char **argv, int start_index) {
 
     for (int i = start_index; i < argc; i++) {
         strcat(result, argv[i]);
-        strcat(result, " ");
+        if (i != argc-1) {
+            strcat(result, " ");
+        }
     }
-    
+
     return result;
 }
 
-// TODO: while loop until correct index, discard with ENTER
 int read_index() {
     int task_index;
     char buffer[TASKS_BUFFER_LEN];
-    printf("Enter the task index: ");
-    
-    if (fgets(buffer, TASKS_BUFFER_LEN, stdin) == NULL) {
-        fprintf(stderr, "Input too long");
-        return -1;
-    }
-    
-    char *endptr;
-    task_index = strtol(buffer, &endptr, 10);
+    while (1) {
+        printf("Enter the task index: ");
 
-    errno = 0;
-    if ((errno == ERANGE) || (endptr == buffer) || (*endptr && *endptr != '\n')) {
-        fprintf(stderr, "Enter a valid integer");
-        return -1;
-    }
+        if (fgets(buffer, TASKS_BUFFER_LEN, stdin) == NULL) {
+            fprintf(stderr, "Failed to read input\n");
+            continue;
+        }
 
-    if ((0 > task_index) || (task_index >= task_count)) {
-        fprintf(stderr, "Index does not correspond to any valid task");
-        return -1;
+        if (buffer[0] == '\n') {
+            printf("Canceled.\n");
+            return -1;
+        }
+        
+        if (strchr(buffer, '\n') == NULL) {
+            int ch;
+            while ((ch = getchar()) != '\n' && ch != EOF); // Discard remaining chars
+            fprintf(stderr, "Input too long, try again\n");
+            continue;
+        }
+        
+        char *endptr;
+        task_index = strtol(buffer, &endptr, 10);
+    
+        errno = 0;
+        if ((errno == ERANGE) || (endptr == buffer) || (*endptr && *endptr != '\n')) {
+            fprintf(stderr, "Enter a valid integer\n");
+            continue;
+        }
+    
+        if ((0 > task_index) || (task_index >= task_count)) {
+            fprintf(stderr, "Index does not correspond to any valid task\n");
+            continue;
+        }
+
+        return task_index;
     }
-    return task_index;
 }
 
 void parse_tasks(int line_count) {
@@ -285,7 +304,7 @@ int complete_task() {
                 parts[TASKS_CREATED_INDEX], 
                 parts[TASKS_NAME_INDEX]);
         } else {
-            fprintf(temp, original_line);
+            fprintf(temp, "%s", original_line);
         }
         free(original_line);
     }
