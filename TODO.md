@@ -14,6 +14,7 @@
 - [x] Change to a unique name
 - [x] Rm magic numbers
 - [x] Add Task parse_tasks()
+- [ ] Make functions memory centric and flush to file
 - [ ] Add psilib for helpfer functions
 - [ ] Add sorting
 - [ ] Add due date
