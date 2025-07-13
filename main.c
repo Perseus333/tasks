@@ -226,18 +226,16 @@ int list_tasks(int only_pending) {
 
 int create_task(const char *task_name) {
     FILE *db = open_db("a");
-    char timestamp[TASKS_TIMESTAMP_LEN+1]; // +1 for \0
-    sprintf(timestamp, "%ld", time(NULL));
+    char current_time[TASKS_TIMESTAMP_LEN+1];
+    sprintf(current_time, "%ld", time(NULL));
     // Format (based on todo.txt)
-    // completed|completed_time|creation_time|name
-    fprintf(db, "[ ]|");
-    for (int i = 0; i < TASKS_TIMESTAMP_LEN; i++) {
-        fprintf(db, "0");
-    }
-    fprintf(db, "|");
-    fprintf(db, "%s", timestamp);
-    fprintf(db, "|");
-    fprintf(db, "%s\n", task_name);
+    // is_completed|completed_time|creation_time|name
+    char zero_timestamp[11];
+    memset(zero_timestamp, '0', 10);
+    fprintf(db, "[ ]|%s|%s|%s\n", 
+        zero_timestamp, 
+        current_time,
+        task_name);
     fclose(db);
     return 0;
 }
@@ -267,6 +265,7 @@ int complete_task() {
     int line_to_complete = tasks[task_index].file_line;
 
     for (int i = 0; getline(&line, &len, db) != -1; i++) {
+        char *original_line = strdup(line);
         line[strcspn(line, "\n")] = '\0';
 
         char *parts[TASKS_PARAMETER_COUNT] = {0};
@@ -278,20 +277,17 @@ int complete_task() {
         }
 
         if (i == line_to_complete) {
-            char timestamp[TASKS_TIMESTAMP_LEN+1]; // +1 for \0
+            char timestamp[TASKS_TIMESTAMP_LEN+1];
             snprintf(timestamp, sizeof(timestamp), "%ld", time(NULL));
+            // Could be modified to toggle is_complete state
             fprintf(temp, "[x]|%s|%s|%s\n",
                 timestamp, 
                 parts[TASKS_CREATED_INDEX], 
                 parts[TASKS_NAME_INDEX]);
         } else {
-            // Could be expanded to include a toggle
-            fprintf(temp, "%s|%s|%s|%s\n",
-                parts[TASKS_IS_COMPLETE_INDEX], 
-                parts[TASKS_COMPLETED_INDEX], 
-                parts[TASKS_CREATED_INDEX], 
-                parts[TASKS_NAME_INDEX]);
+            fprintf(temp, original_line);
         }
+        free(original_line);
     }
 
     free(line);
