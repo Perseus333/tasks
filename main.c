@@ -13,8 +13,8 @@
 #define TASKS_BACKUP_EXTENSION ".bak"
 #define TASKS_BUFFER_LEN 5
 #define TASKS_TIMESTAMP_LEN 10 // Currently UNIX (seconds)
-#define TASKS_ONLY_PENDING 1
 #define TASKS_INCLUDE_ALL 0
+#define TASKS_ONLY_PENDING 1
 
 enum {
     TASKS_IS_COMPLETE_INDEX = 0,
@@ -94,11 +94,12 @@ int count_lines() {
 }
 
 char *join_argv(int argc, char **argv, int start_index) {
-    size_t total_len = 0;
+    size_t total_len = 1;
 
     for (int i = start_index; i < argc; i++) {
         total_len += strlen(argv[i]);
     }
+    total_len += (argc - start_index); // spaces
 
     char *result = malloc(total_len);
     result[0] = '\0';
@@ -137,9 +138,9 @@ int read_index() {
         }
         
         char *endptr;
+        errno = 0;
         task_index = strtol(buffer, &endptr, 10);
     
-        errno = 0;
         if ((errno == ERANGE) || (endptr == buffer) || (*endptr && *endptr != '\n')) {
             fprintf(stderr, "Enter a valid integer\n");
             continue;
@@ -222,23 +223,14 @@ int list_tasks(int only_pending) {
     int index = 0;
     for (int i = 0; i < task_count; i++) {
         struct Task task = tasks[i];
-        if (only_pending == 0) {
-            char *complete_format;
-            if (task.is_complete) {
-                complete_format = "[x]";
-            }
-            else {
-                complete_format = "[ ]";
-            }
-            printf("%d.\t%s\t%s\n", index, complete_format, task.name);
-            index++;
+        if (only_pending && task.is_complete) {
+            continue;
         }
-        else {
-            if (task.is_complete == 0) {
-                printf("%d.\t%s\n", index, task.name);
-                index++;
-            }
-        }
+        printf("%d.\t%s\t%s\n",
+            index,
+            task.is_complete ? "[x]" : "[ ]",
+            task.name
+        );
     }
     return 0;
 }
@@ -247,10 +239,14 @@ int create_task(const char *task_name) {
     FILE *db = open_db("a");
     char current_time[TASKS_TIMESTAMP_LEN+1];
     sprintf(current_time, "%ld", time(NULL));
+    current_time[-1] = '\0';
+    printf(current_time);
+
     // Format (based on todo.txt)
     // is_completed|completed_time|creation_time|name
-    char zero_timestamp[11];
-    memset(zero_timestamp, '0', 10);
+    char zero_timestamp[TASKS_TIMESTAMP_LEN+1];
+    memset(zero_timestamp, '0', TASKS_TIMESTAMP_LEN);
+	zero_timestamp[-1] = '\0';
     fprintf(db, "[ ]|%s|%s|%s\n", 
         zero_timestamp, 
         current_time,
