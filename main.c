@@ -240,7 +240,6 @@ int create_task(const char *task_name) {
     char current_time[TASKS_TIMESTAMP_LEN+1];
     sprintf(current_time, "%ld", time(NULL));
     current_time[-1] = '\0';
-    printf(current_time);
 
     // Format (based on todo.txt)
     // is_completed|completed_time|creation_time|name
@@ -255,7 +254,6 @@ int create_task(const char *task_name) {
     return 0;
 }
 
-// TODO: Fix, filling NULLs when corrupted lines
 int complete_task() {
     list_tasks(TASKS_INCLUDE_ALL);
     int task_index = read_index();
