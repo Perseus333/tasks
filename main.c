@@ -220,14 +220,13 @@ void parse_tasks(int line_count) {
 }
 
 int list_tasks(int only_pending) {
-    int index = 0;
     for (int i = 0; i < task_count; i++) {
         struct Task task = tasks[i];
         if (only_pending && task.is_complete) {
             continue;
         }
         printf("%d.\t%s\t%s\n",
-            index,
+            i,
             task.is_complete ? "[x]" : "[ ]",
             task.name
         );
